@@ -15,12 +15,12 @@ CONFIG = {
     # Input videos
     #"video_path_left": "rec\main1_L.mkv",
     #"video_path_right": "rec\main1_R.mkv",
-    "video_path_left": 2,
+    "video_path_left": 1,
     "video_path_right": 0,
     # Stereo calibration file (pickle with keys mtxL, distL, mtxR, distR, R, T)
     "calibration_file": "stereo_params_charuco_stereo6.pkl",
     # ROI for cable/edge detection (drag to move in the main window)
-    "roi": {"x": 400, "y": 100, "w": 800, "h": 30},
+    "roi": {"x": 400, "y": 100, "w": 1600, "h": 20},
     # Contour detection params
     "contour_detection": {
         "gaussian_blur_kernel": (7, 7),
@@ -443,9 +443,11 @@ class StereoVideoProcessor:
         matched_pairs = []
         if not centers1 or not centers2:
             return canvas, matched_pairs
+
         YT = self.config["Y_TOLERANCE_PX"]
         DT = self.config["DISPARITY_TOLERANCE_PX"]
         n = min(len(centers1), len(centers2))
+
         for i in range(n):
             pt1 = centers1[i]
             pt2 = centers2[i]
@@ -453,32 +455,34 @@ class StereoVideoProcessor:
                 label = self.labels[i]
                 box1, box2 = boxes1[i], boxes2[i]
                 matched_pairs.append((pt1, box1, pt2, box2, label))
+
         for pt1, box1, pt2, box2, label in matched_pairs:
             p1 = np.array(pt1, dtype=float).reshape(2, 1)
             p2 = np.array(pt2, dtype=float).reshape(2, 1)
-            X = cv2.triangulatePoints(self.P1, self.P2, p1, p2) # 4x1
-            X = X / X[3]
-            raw_y = float(X[1])
-            raw_z = float(X[2])
-            raw_h = abs(raw_y)
-            h_cal = self._calibrate_height(raw_h)
+            X = cv2.triangulatePoints(self.P1, self.P2, p1, p2)  # 4x1
+            X = X / X[3]  # Normalize
+            raw_x = float(X[0])   # lateral
+            raw_z = float(X[2])   # depth
+
+
             # EMA smoothing
             if label not in self.smoothed_measurements:
-                self.smoothed_measurements[label] = {"h": h_cal, "z": raw_z}
+                self.smoothed_measurements[label] = {"z": raw_z, "x": raw_x}
             else:
                 sf = self.config["smoothing_factor"]
                 prev = self.smoothed_measurements[label]
                 self.smoothed_measurements[label] = {
-                    "h": sf * h_cal + (1 - sf) * prev["h"],
                     "z": sf * raw_z + (1 - sf) * prev["z"],
+                    "x": sf * raw_x + (1 - sf) * prev["x"],
                 }
-            disp_h = self.smoothed_measurements[label]["h"]
             disp_z = self.smoothed_measurements[label]["z"]
+            disp_x = self.smoothed_measurements[label]["x"]
+
             color = self.color_map.get(label, (255, 255, 255))
             cv2.rectangle(canvas, (10, yline - 15), (20, yline - 5), color, -1)
             cv2.putText(
                 canvas,
-                f"ID {label} | H: {(disp_h):.3f} m | Z: {disp_z:.3f} m",
+                f"ID {label} | Z: {disp_z + 0.000:.3f} m | X: {disp_x:.3f} m",
                 (30, yline),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
@@ -486,7 +490,9 @@ class StereoVideoProcessor:
                 1,
             )
             yline += 40
+
         return canvas, matched_pairs
+
     # -------------------- Drawing & Display --------------------
     def _draw_overlays(self, f1, f2, matched_pairs):
         roi = self.current_roi
