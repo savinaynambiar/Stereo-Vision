@@ -16,7 +16,7 @@ CONFIG = {
     #"video_path_left": "rec\main1_L.mkv",
     #"video_path_right": "rec\main1_R.mkv",
     "video_path_left": 1,
-    "video_path_right": 0,
+    "video_path_right": 2,
     # Stereo calibration file (pickle with keys mtxL, distL, mtxR, distR, R, T)
     "calibration_file": "stereo_params_charuco_stereo6.pkl",
     # ROI for cable/edge detection (drag to move in the main window)
@@ -32,7 +32,7 @@ CONFIG = {
     # Temporal smoothing (EMA)
     "smoothing_factor": 0.15,
     # Display sizes
-    "display": {"width": 960, "height": 540},
+    "display": {"width": 720, "height": 540},
     # --- CALIBRATION: Use Prediction 2 (RAW) vs Actual ---
     # These should be the *uncalibrated* heights from your pipeline (Prediction 2)
     # matched to ground-truth Actual measurements. Calibrate once.
@@ -482,7 +482,7 @@ class StereoVideoProcessor:
             cv2.rectangle(canvas, (10, yline - 15), (20, yline - 5), color, -1)
             cv2.putText(
                 canvas,
-                f"ID {label} | Z: {disp_z + 0.000:.3f} m | X: {disp_x:.3f} m",
+                f"ID {label} | Z: {disp_z + 0.040:.3f} m | X: {disp_x:.3f} m",
                 (30, yline),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.7,
